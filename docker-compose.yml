@@ -1,0 +1,66 @@
+version: "3"
+
+services:
+  # db container
+  db:
+    build: db/
+
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "VjMaexz$rF"
+      POSTGRES_DB: "billing"
+
+    ports:
+      - 5432:5432
+
+  # rabbitmq container
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    volumes:
+      - ./.docker/rabbitmq/etc/:/etc/rabbitmq/
+      - ./.docker/rabbitmq/data/:/var/lib/rabbitmq/mnesia
+      - ./.docker/rabbitmq/logs/:/var/log/rabbitmq/
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  # billing container
+  billing:
+    build: billing/
+
+    environment:
+      AMQP_HOST: "rabbitmq"
+      SQL_URI: "host=db port=5432 user=postgres password=VjMaexz$rF dbname=billing sslmode=disable"
+
+    command: go run ./main.go
+
+    ports:
+      - 14502:14501
+
+    depends_on:
+      - rabbitmq
+
+  # billing_test container
+  billing_test:
+    build: billing_test/
+
+    environment:
+      AMQP_HOST: "rabbitmq"
+      SQL_URI: "host=db port=5432 user=postgres password=VjMaexz$rF dbname=billing sslmode=disable"
+
+    command: go run ./main.go
+
+    ports:
+      - 14503:14500
+
+    depends_on:
+      - rabbitmq
+      - billing
+
+volumes:
+  dbdata:
